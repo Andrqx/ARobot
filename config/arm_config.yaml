@@ -1,0 +1,76 @@
+# ============================================================
+# ARobot — 4-DOF Robotic Arm Configuration
+#
+# Real specs as of 2026-06-15 (subject to refinement once the
+# body is built — then it's just editing numbers here).
+#
+# Units:  lengths in millimetres, angles in degrees, torque in N·m.
+# Joint order is always base -> tip.
+# ============================================================
+
+links:
+  # Lengths chosen from the torque budget (see DESIGN.md):
+  # the weak elbow gets the shorter moment arm; the strong shoulder
+  # carries the long upper arm. Total reach L2+L3+L4 = 650 mm.
+  base_height_mm: 150.0    # base plane -> shoulder pivot (tune to your base)
+  upper_arm_mm:   300.0    # shoulder pivot -> elbow pivot
+  forearm_mm:     230.0    # elbow pivot -> wrist pivot
+  tool_mm:        120.0    # wrist pivot -> tool tip / gripper face
+
+joints:
+  - name: base            # yaw — rotates the whole arm about vertical Z
+    axis: yaw
+    driver_type: stepper
+    gear_ratio: 15.0       # cycloidal drive, 15:1
+    motor_torque_nm: 3.0   # NEMA 23
+    min_deg: -170.0
+    max_deg:  170.0
+    home_deg: 0.0
+    max_vel_deg_s: 60.0      # motion-planning speed limit (tune on hardware)
+    max_accel_deg_s2: 120.0
+
+  - name: shoulder        # pitch — carries the whole arm; highest load joint
+    axis: pitch
+    driver_type: stepper
+    gear_ratio: 15.0       # cycloidal drive, 15:1
+    motor_torque_nm: 3.0   # NEMA 23
+    min_deg: -20.0
+    max_deg: 150.0
+    home_deg: 90.0         # arm pointing straight up at home
+    max_vel_deg_s: 45.0      # heaviest joint — kept slower
+    max_accel_deg_s2: 90.0
+
+  - name: elbow           # pitch — BINDING constraint (weakest stepper joint)
+    axis: pitch
+    driver_type: stepper
+    gear_ratio: 20.25      # Pulley Motor V2 double belt: 4.5 * 4.5 = 20.25:1
+    motor_torque_nm: 0.3   # NEMA 17
+    min_deg: -150.0
+    max_deg: 150.0
+    home_deg: 0.0
+    max_vel_deg_s: 90.0
+    max_accel_deg_s2: 180.0
+
+  - name: wrist           # pitch — Waveshare serial bus servo (not a stepper)
+    axis: pitch
+    driver_type: bus_servo
+    gear_ratio: 1.0        # servo handles its own internal reduction
+    motor_torque_nm: 2.9   # ~ST3215-class holding torque (update once chosen)
+    min_deg: -120.0
+    max_deg: 120.0
+    home_deg: 0.0
+    max_vel_deg_s: 120.0
+    max_accel_deg_s2: 360.0
+
+motor:
+  # Applies to the STEPPER joints (base/shoulder/elbow). The wrist servo
+  # has its own absolute encoder and ignores these.
+  full_steps_per_rev: 200       # 1.8° NEMA stepper
+  microsteps: 16                # driver microstepping setting
+  encoder_counts_per_rev: 4096  # TODO: your encoder resolution (e.g. AS5600 = 4096)
+
+# Mass/payload budget used for the torque analysis (see DESIGN.md).
+# Not required by the kinematics, but kept here as the design record.
+payload:
+  nominal_kg: 0.30   # design target at the tool tip
+  max_kg:     0.50   # elbow-limited ceiling

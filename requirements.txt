@@ -1,0 +1,9 @@
+numpy>=1.26
+matplotlib>=3.8
+pyyaml>=6.0
+pytest>=8.0
+pillow>=10.0   # for saving animations as GIFs
+
+# --- Raspberry Pi only (install on the Pi, not on Windows) ---
+# pigpio          # fast GPIO for step/dir generation
+# opencv-python   # vision: ArUco / blob detection from the Pi camera

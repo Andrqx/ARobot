@@ -1,0 +1,27 @@
+# ============================================================
+# ARobot — CAD geometry map
+#
+# When you export STL meshes from SolidWorks, drop them in the meshes/
+# folder and set each link's `mesh:` to the filename. Until then leave
+# mesh: null and the sim / URDF use placeholder cylinders.
+#
+# Masses are rough estimates used for the URDF / dynamics — refine them
+# from CAD (SolidWorks reports mass properties per part/assembly).
+# Link names match the kinematic chain: column, upper, forearm, tool.
+# ============================================================
+
+meshes_dir: meshes
+
+links:
+  column:                  # base column driven by the base yaw joint
+    mesh: null             # e.g. meshes/column.stl
+    mass_kg: 1.5           # cycloidal base module (NEMA 23 + gearbox)
+  upper:                   # upper arm (shoulder -> elbow)
+    mesh: null
+    mass_kg: 0.6           # aluminum link + elbow motor module
+  forearm:                 # forearm (elbow -> wrist)
+    mesh: null
+    mass_kg: 0.4
+  tool:                    # wrist -> tool tip
+    mesh: null
+    mass_kg: 0.25          # wrist servo + gripper

@@ -1,0 +1,13 @@
+{
+  "name": "pick_place_demo",
+  "description": "Example taught routine: pick from the left, place on the right.",
+  "waypoints": [
+    { "name": "home",        "joints_deg": [0.0,  90.0,   0.0,  0.0], "pause_s": 0.0, "gripper": "open" },
+    { "name": "approach_left","joints_deg": [45.0, 60.0, -90.0, 30.0], "pause_s": 0.0, "gripper": "open" },
+    { "name": "pick",        "joints_deg": [45.0, 40.0, -110.0, 40.0], "pause_s": 0.5, "gripper": "close" },
+    { "name": "lift",        "joints_deg": [45.0, 70.0,  -80.0, 20.0], "pause_s": 0.0, "gripper": "close" },
+    { "name": "approach_right","joints_deg": [-45.0, 60.0, -90.0, 30.0], "pause_s": 0.0, "gripper": "close" },
+    { "name": "place",       "joints_deg": [-45.0, 40.0, -110.0, 40.0], "pause_s": 0.5, "gripper": "open" },
+    { "name": "home",        "joints_deg": [0.0,  90.0,   0.0,  0.0], "pause_s": 0.0, "gripper": "open" }
+  ]
+}

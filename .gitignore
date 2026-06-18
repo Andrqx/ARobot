@@ -6,4 +6,5 @@ venv/
 *.gif
 *.mp4
 *.png
+*.urdf
 .DS_Store

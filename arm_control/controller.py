@@ -17,6 +17,7 @@ import numpy as np
 from .config import ArmConfig
 from .drivers import JointDriver, SimDriver
 from .kinematics import ArmKinematics, Unreachable
+from .teach import Program, Waypoint
 from .trajectory import Trajectory, interpolate, plan_trapezoidal
 
 
@@ -31,6 +32,7 @@ class ArmController:
         self.cfg = cfg
         self.kin = kin
         self.drivers = drivers
+        self.homed = False
 
     @classmethod
     def simulated(cls, cfg: ArmConfig, backlash_deg: float = 0.0) -> "ArmController":
@@ -95,13 +97,53 @@ class ArmController:
         traj = self.plan_to_pose(x, y, z, pitch_deg, elbow_up=elbow_up, dt=dt)
         return self.execute(traj)
 
-    def go_home(self, dt=0.01):
-        """Return every joint to its configured home angle (profiled)."""
-        q_start = self.current_angles_deg()
+    def home(self, dt=0.01):
+        """Drive every joint to its configured home angle and mark as homed.
+
+        In sim this just moves to the home pose. On hardware this is where a
+        real homing routine goes (seek limit switches / encoder index), after
+        which joint zero is trusted and taught programs are repeatable.
+        """
         traj = plan_trapezoidal(
-            q_start, self.cfg.home_angles_deg(),
+            self.current_angles_deg(), self.cfg.home_angles_deg(),
             v_max=self.cfg.max_vel_deg_s(),
             a_max=self.cfg.max_accel_deg_s2(),
             dt=dt,
         )
-        return self.execute(traj)
+        self.execute(traj)
+        self.homed = True
+        return traj
+
+    go_home = home  # backward-compatible alias
+
+    # --- Teach and repeat ---------------------------------------------
+
+    def record_waypoint(self, name: str, pause_s: float = 0.0) -> Waypoint:
+        """Snapshot the current joint angles as a named waypoint."""
+        return Waypoint(
+            name=name,
+            joints_deg=[round(float(a), 3) for a in self.current_angles_deg()],
+            pause_s=pause_s,
+        )
+
+    def run_program(self, program: Program, dt=0.01, on_waypoint=None):
+        """Replay a taught program, moving through each waypoint in order.
+
+        Returns the list of executed Trajectories. ``on_waypoint(wp, traj)`` is
+        called after each waypoint is reached (e.g. to log or actuate a gripper).
+        """
+        trajs = []
+        for wp in program.waypoints:
+            q_goal = np.asarray(wp.joints_deg, dtype=float)
+            self._check_limits(q_goal)
+            traj = plan_trapezoidal(
+                self.current_angles_deg(), q_goal,
+                v_max=self.cfg.max_vel_deg_s(),
+                a_max=self.cfg.max_accel_deg_s2(),
+                dt=dt,
+            )
+            self.execute(traj)
+            trajs.append(traj)
+            if on_waypoint is not None:
+                on_waypoint(wp, traj)
+        return trajs

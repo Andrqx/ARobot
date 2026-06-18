@@ -7,6 +7,8 @@ from .config import ArmConfig, Joint, Motor, load_config
 from .kinematics import ArmKinematics, Unreachable
 from .trajectory import interpolate, plan_trapezoidal, Trajectory
 from .drivers import JointDriver, SimDriver, StepperEncoderDriver, BusServoDriver
+from .teach import Program, Waypoint
+from .robot_model import RobotModel, Link
 from .controller import ArmController
 
 __all__ = [
@@ -23,5 +25,9 @@ __all__ = [
     "SimDriver",
     "StepperEncoderDriver",
     "BusServoDriver",
+    "Program",
+    "Waypoint",
+    "RobotModel",
+    "Link",
     "ArmController",
 ]

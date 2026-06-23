@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<!--
+  ARobot web control panel — served by the command server at GET /.
+  Self-contained (no external CDNs) so it works offline on the Raspberry Pi.
+  Talks to the same JSON API documented at GET /api.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARobot — Control Panel</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2230; --line: #2b3648; --accent: #2a7de1;
+    --accent2: #e23a3a; --ok: #2ecc71; --text: #e6edf3; --muted: #8b97a7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  header {
+    padding: 16px 22px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .wrap {
+    max-width: 980px; margin: 0 auto; padding: 22px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 12px; }
+  .full { grid-column: 1 / -1; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .stat { background: #131a25; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; }
+  .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .stat .v { font-size: 18px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input[type=number] {
+    width: 100%; padding: 8px 10px; background: #131a25; color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; font-size: 14px;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 70px; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+    padding: 9px 16px; font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.ghost { background: #233044; }
+  button.danger { background: var(--accent2); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btnrow { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  select { padding: 8px 10px; background: #131a25; color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; font-size: 14px; flex: 1; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; }
+  .pill.open { background: #14361f; color: var(--ok); }
+  .pill.close { background: #3a1414; color: #ff8080; }
+  #log {
+    grid-column: 1 / -1; background: #0b0f15; border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace;
+    font-size: 12px; min-height: 40px; color: var(--muted); white-space: pre-wrap;
+  }
+  #log.err { color: #ff8080; }
+  #log.ok { color: var(--ok); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    margin-right: 6px; background: var(--accent2); }
+  .dot.live { background: var(--ok); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ARobot</h1>
+  <span class="sub"><span id="conn" class="dot"></span><span id="connText">connecting…</span>
+    · 4-DOF arm · simulated</span>
+</header>
+
+<div class="wrap">
+  <!-- Live state -->
+  <div class="card full">
+    <h2>State</h2>
+    <div class="grid4" id="angles"></div>
+    <div class="grid4" style="margin-top:10px">
+      <div class="stat"><div class="k">Tip X</div><div class="v" id="px">–</div></div>
+      <div class="stat"><div class="k">Tip Y</div><div class="v" id="py">–</div></div>
+      <div class="stat"><div class="k">Tip Z</div><div class="v" id="pz">–</div></div>
+      <div class="stat"><div class="k">Pitch</div><div class="v" id="ppitch">–</div></div>
+    </div>
+    <div style="margin-top:12px">
+      Gripper: <span id="grip" class="pill open">–</span>
+      &nbsp;·&nbsp; Homed: <span id="homed">–</span>
+    </div>
+    <div class="btnrow">
+      <button onclick="post('/home')">Home</button>
+      <button class="ghost" onclick="post('/gripper',{state:'open'})">Open gripper</button>
+      <button class="ghost" onclick="post('/gripper',{state:'close'})">Close gripper</button>
+    </div>
+  </div>
+
+  <!-- Cartesian move -->
+  <div class="card">
+    <h2>Move to pose (Cartesian)</h2>
+    <div class="row">
+      <div><label>X (mm)</label><input type="number" id="mx" value="250"></div>
+      <div><label>Y (mm)</label><input type="number" id="my" value="80"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Z (mm)</label><input type="number" id="mz" value="300"></div>
+      <div><label>Pitch (°)</label><input type="number" id="mpitch" value="0"></div>
+    </div>
+    <div class="btnrow"><button onclick="doMove()">Move</button></div>
+  </div>
+
+  <!-- Joint move -->
+  <div class="card">
+    <h2>Move joints (degrees)</h2>
+    <div class="row">
+      <div><label>Base</label><input type="number" id="jbase" value="0"></div>
+      <div><label>Shoulder</label><input type="number" id="jshoulder" value="90"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Elbow</label><input type="number" id="jelbow" value="0"></div>
+      <div><label>Wrist</label><input type="number" id="jwrist" value="0"></div>
+    </div>
+    <div class="btnrow"><button onclick="doJoints()">Move joints</button></div>
+  </div>
+
+  <!-- Programs -->
+  <div class="card full">
+    <h2>Taught programs</h2>
+    <div class="row">
+      <select id="prog"></select>
+      <button onclick="runProgram()">Run program</button>
+      <button class="ghost" onclick="loadPrograms()">Refresh</button>
+    </div>
+  </div>
+
+  <div id="log">ready.</div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const JOINTS = ["base", "shoulder", "elbow", "wrist"];
+
+  function log(msg, kind) {
+    const el = $("log");
+    el.className = kind || "";
+    el.textContent = msg;
+  }
+
+  function setConn(live) {
+    $("conn").className = "dot" + (live ? " live" : "");
+    $("connText").textContent = live ? "connected" : "offline";
+  }
+
+  // Render the State card from a /state payload.
+  function render(state) {
+    const ang = $("angles");
+    ang.innerHTML = "";
+    for (const j of JOINTS) {
+      const v = state.angles_deg[j];
+      ang.insertAdjacentHTML("beforeend",
+        `<div class="stat"><div class="k">${j}</div>
+         <div class="v">${v.toFixed(1)}°</div></div>`);
+    }
+    $("px").textContent = state.pose.x.toFixed(0);
+    $("py").textContent = state.pose.y.toFixed(0);
+    $("pz").textContent = state.pose.z.toFixed(0);
+    $("ppitch").textContent = state.pose.pitch_deg.toFixed(1) + "°";
+    const g = $("grip");
+    g.textContent = state.gripper;
+    g.className = "pill " + state.gripper;
+    $("homed").textContent = state.homed ? "yes" : "no";
+  }
+
+  async function refresh() {
+    try {
+      const r = await fetch("/state");
+      const s = await r.json();
+      render(s);
+      setConn(true);
+    } catch (e) {
+      setConn(false);
+    }
+  }
+
+  // POST a command; show the result and update state.
+  async function post(path, body) {
+    try {
+      const r = await fetch(path, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: body ? JSON.stringify(body) : null,
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        log(`${path} → ${r.status}: ${data.detail || data.error}`, "err");
+        return null;
+      }
+      if (data.state) render(data.state);
+      log(`${path} ✓  ${summarize(data)}`, "ok");
+      return data;
+    } catch (e) {
+      log(`${path} failed: ${e}`, "err");
+      return null;
+    }
+  }
+
+  function summarize(d) {
+    const bits = [];
+    if (d.steps != null) bits.push(`${d.steps} steps`);
+    if (d.waypoints) bits.push(`${d.waypoints.length} waypoints`);
+    return bits.join(", ");
+  }
+
+  function doMove() {
+    post("/move", {
+      x: +$("mx").value, y: +$("my").value,
+      z: +$("mz").value, pitch_deg: +$("mpitch").value,
+    });
+  }
+
+  function doJoints() {
+    post("/move_joints", {
+      joints_deg: [+$("jbase").value, +$("jshoulder").value,
+                   +$("jelbow").value, +$("jwrist").value],
+    });
+  }
+
+  async function loadPrograms() {
+    try {
+      const r = await fetch("/programs");
+      const { programs } = await r.json();
+      const sel = $("prog");
+      sel.innerHTML = "";
+      if (!programs.length) {
+        sel.insertAdjacentHTML("beforeend", `<option value="">(none)</option>`);
+      }
+      for (const p of programs) {
+        sel.insertAdjacentHTML("beforeend", `<option value="${p}">${p}</option>`);
+      }
+    } catch (e) { log("could not load programs: " + e, "err"); }
+  }
+
+  function runProgram() {
+    const name = $("prog").value;
+    if (!name) { log("no program selected", "err"); return; }
+    post("/run_program", { name });
+  }
+
+  // Boot: load programs, then poll state once a second.
+  loadPrograms();
+  refresh();
+  setInterval(refresh, 1000);
+</script>
+</body>
+</html>

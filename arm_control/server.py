@@ -46,6 +46,7 @@ from __future__ import annotations
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import urlparse
 
 from .config import load_config
@@ -53,9 +54,13 @@ from .controller import ArmController, LimitViolation
 from .kinematics import Unreachable
 from .teach import Program
 
-# The endpoints advertised at GET / — also handy as a quick self-doc.
+# The browser control panel served at GET /.
+_UI_FILE = Path(__file__).resolve().parent / "web" / "index.html"
+
+# The endpoints advertised at GET /api — also handy as a quick self-doc.
 ENDPOINTS = {
-    "GET /": "this index",
+    "GET /": "web control panel (HTML)",
+    "GET /api": "this index (machine-readable)",
     "GET /state": "current joint angles, tool pose, homed flag",
     "GET /info": "link lengths, joint limits, reach envelope",
     "GET /programs": "names of taught programs on disk",
@@ -173,7 +178,7 @@ class ArmService:
         """
         route = (method.upper(), urlparse(path).path.rstrip("/") or "/")
         try:
-            if route == ("GET", "/"):
+            if route == ("GET", "/api"):
                 return 200, {"endpoints": ENDPOINTS}
             if route == ("GET", "/state"):
                 return 200, self.state()
@@ -216,6 +221,14 @@ def _require(body: dict, key: str):
 # HTTP layer — a thin shell that hands requests to ArmService.dispatch.
 # ----------------------------------------------------------------------
 
+def _load_ui() -> bytes:
+    """Read the control-panel HTML (served at GET /)."""
+    try:
+        return _UI_FILE.read_bytes()
+    except FileNotFoundError:
+        return b"<h1>ARobot</h1><p>UI file missing; API is at /api</p>"
+
+
 def _make_handler(service: ArmService):
     class Handler(BaseHTTPRequestHandler):
         # Quieter logs; override if you want request logging.
@@ -230,6 +243,13 @@ def _make_handler(service: ArmService):
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_html(self, body: bytes, status: int = 200) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
         def _read_body(self) -> dict | None:
             length = int(self.headers.get("Content-Length", 0))
             if not length:
@@ -238,6 +258,9 @@ def _make_handler(service: ArmService):
             return json.loads(raw) if raw else None
 
         def do_GET(self):
+            if urlparse(self.path).path in ("/", "/index.html", "/ui"):
+                self._send_html(_load_ui())
+                return
             status, payload = service.dispatch("GET", self.path, None)
             self._send(status, payload)
 
@@ -261,7 +284,9 @@ def serve(service: ArmService | None = None, host: str = "0.0.0.0",
     """
     service = service or ArmService.simulated()
     httpd = ThreadingHTTPServer((host, port), _make_handler(service))
+    shown = "localhost" if host in ("0.0.0.0", "") else host
     print(f"ARobot command server on http://{host}:{port}  (Ctrl-C to stop)")
+    print(f"  open the control panel at  http://{shown}:{port}/")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -24,8 +24,8 @@ def make_service() -> ArmService:
 
 # --- dispatch-level unit tests ----------------------------------------
 
-def test_index_lists_endpoints():
-    status, body = make_service().dispatch("GET", "/", None)
+def test_api_index_lists_endpoints():
+    status, body = make_service().dispatch("GET", "/api", None)
     assert status == 200
     assert "GET /state" in body["endpoints"]
 
@@ -135,6 +135,12 @@ def test_unknown_route_is_404():
     assert status == 404
 
 
+def test_ui_file_loads():
+    from arm_control.server import _load_ui
+    html = _load_ui()
+    assert b"ARobot" in html and b"<html" in html.lower()
+
+
 def test_trailing_slash_is_normalized():
     status, _ = make_service().dispatch("GET", "/state/", None)
     assert status == 200
@@ -150,6 +156,14 @@ def test_http_round_trip():
     thread.start()
     try:
         conn = HTTPConnection("127.0.0.1", port, timeout=5)
+
+        # GET / serves the HTML control panel.
+        conn.request("GET", "/")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert resp.getheader("Content-Type").startswith("text/html")
+        html = resp.read().decode()
+        assert "ARobot" in html
 
         conn.request("GET", "/state")
         resp = conn.getresponse()

@@ -105,10 +105,12 @@ phone, or another machine can command the arm with JSON. Simulation-first like
 everything else — same API once the hardware is real.
 
 A self-contained **web control panel** is served at `GET /` (no external
-CDNs, so it works offline on the Pi): live joint/pose/gripper readout that
-polls once a second, plus forms to move, jog joints, open/close the gripper,
-and run taught programs. Open `http://localhost:8080/` in a browser. The raw
-JSON API index moves to `GET /api`.
+CDNs, so it works offline on the Pi): a **live 3D view** of the arm (canvas +
+in-browser forward kinematics, eased animation, drag-to-orbit) above a
+joint/pose/gripper readout that polls once a second, plus forms to move, jog
+joints, open/close the gripper, and run taught programs. Open
+`http://localhost:8080/` in a browser. The raw JSON API index moves to
+`GET /api`.
 
 ```bash
 python examples/serve.py             # starts on http://0.0.0.0:8080

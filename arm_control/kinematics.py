@@ -83,6 +83,37 @@ class ArmKinematics:
         x, y, z = points["tip"]
         return float(x), float(y), float(z), float(pitch)
 
+    def link_frames(self, q):
+        """Joint angles (rad) -> world frame (R, origin) for each link.
+
+        Returns an ordered dict ``name -> (R, p)`` for column/upper/forearm/
+        tool, where a point authored in the link's *local* frame maps to world
+        as ``p + R @ local``. Used to place CAD meshes on the moving arm.
+
+        Convention (matches the SolidWorks export tips): each arm link lies
+        along its local **+X** with the pitch axis along local **+Y**; the
+        column lies along local **+Z**. Each frame origin equals that joint's
+        pivot point from :meth:`forward`, so meshes line up with the skeleton.
+        """
+        points, _ = self.forward(q)
+        t1, t2, t3, t4 = q
+        c1, s1 = np.cos(t1), np.sin(t1)
+        n = np.array([s1, -c1, 0.0])           # arm-plane normal = world pitch axis
+
+        def arm_R(a):
+            ca, sa = np.cos(a), np.sin(a)
+            d = np.array([c1 * ca, s1 * ca, sa])   # local +X (long axis) in world
+            b = np.cross(d, n)                      # local +Z (right-handed)
+            return np.column_stack((d, n, b))
+
+        rz = np.array([[c1, -s1, 0.0], [s1, c1, 0.0], [0.0, 0.0, 1.0]])
+        return {
+            "column": (rz, points["base"]),
+            "upper": (arm_R(t2), points["shoulder"]),
+            "forearm": (arm_R(t2 + t3), points["elbow"]),
+            "tool": (arm_R(t2 + t3 + t4), points["wrist"]),
+        }
+
     # --- Inverse kinematics -------------------------------------------
 
     def inverse(self, x, y, z, pitch, elbow_up=True):
@@ -136,6 +167,10 @@ class ArmKinematics:
     def tip_pose_deg(self, q_deg):
         x, y, z, pitch = self.tip_pose(np.radians(q_deg))
         return x, y, z, np.degrees(pitch)
+
+    def link_frames_deg(self, q_deg):
+        """Degree-input wrapper for :meth:`link_frames`."""
+        return self.link_frames(np.radians(q_deg))
 
     def inverse_deg(self, x, y, z, pitch_deg, elbow_up=True):
         q = self.inverse(x, y, z, np.radians(pitch_deg), elbow_up)

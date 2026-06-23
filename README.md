@@ -39,15 +39,24 @@ control/
 cd control
 python -m pip install -r requirements.txt
 python examples/demo.py          # text demo: IK move + derived motor constants
-python -m sim.visualize          # 3D animated move
+python -m sim.visualize          # 3D animated move (renders CAD meshes if present)
 pytest -q                        # prove the kinematics
 ```
+
+`sim.visualize` draws the stick-figure skeleton today; the moment you export
+STLs and list them in `config/geometry.yaml`, it renders the real parts moving
+on the arm instead — no code change.
 
 ## The key design idea: one seam to hardware
 All motion goes through the `JointDriver` interface:
 - **`SimDriver`** — works today, perfect tracking (optional backlash model).
 - **`StepperEncoderDriver`** — stub for the Pi. When you build, implement it
   (GPIO step/dir + encoder read + correction loop). **Nothing above it changes.**
+
+The gripper follows the same pattern via `GripperDriver` (`SimGripper` now,
+`ServoGripper` stub later). Taught programs carry a per-waypoint `gripper`
+field (`"open"`/`"close"`) that `run_program` actuates automatically — so the
+bundled `pick_place_demo` actually grabs and releases in sim.
 
 ```python
 from arm_control import ArmController, load_config
@@ -90,13 +99,71 @@ or MuJoCo to train. Placeholder geometry today; once CAD STLs are listed in
 
 Everything downstream (steps-per-degree, reach, IK, URDF) updates automatically.
 
+## Command server (drive the arm over the network)
+A stdlib-only HTTP server (no Flask) wraps the controller, so a web UI, a
+phone, or another machine can command the arm with JSON. Simulation-first like
+everything else — same API once the hardware is real.
+
+```bash
+python examples/serve.py             # starts on http://0.0.0.0:8080
+
+curl localhost:8080/state
+curl localhost:8080/info
+curl -X POST localhost:8080/home
+curl -X POST localhost:8080/move        -d '{"x":250,"y":80,"z":300,"pitch_deg":0}'
+curl -X POST localhost:8080/move_joints -d '{"joints_deg":[0,90,-30,10]}'
+curl -X POST localhost:8080/run_program -d '{"name":"pick_place_demo"}'
+```
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/state` | current joint angles, tool pose, homed flag |
+| GET | `/info` | link lengths, joint limits, reach envelope |
+| GET | `/programs` | names of taught programs on disk |
+| POST | `/home` | run the homing routine |
+| POST | `/move` | Cartesian move `{x, y, z, pitch_deg?, elbow_up?}` |
+| POST | `/move_joints` | direct joint-space move `{joints_deg: [...]}` |
+| POST | `/gripper` | open/close the gripper `{state: 'open'|'close'}` |
+| POST | `/run_program` | replay `{name}` or inline `{program}` |
+
+Out-of-reach targets and joint-limit violations come back as HTTP `422` with a
+message; the routing core (`ArmService.dispatch`) is unit-tested without sockets.
+
+## Perception (camera → target → move)
+Same simulation-first seam as the drivers: a `DetectionSource` interface with
+`SimDetector` (works today, scripted detections) and `ArucoCameraDetector` (the
+Pi-camera stub you fill in later). A `CameraExtrinsics` transform converts what
+the camera sees into base coordinates, and `PerceptionPipeline` feeds that
+straight into `move_to_pose`.
+
+```bash
+python examples/perception_demo.py   # simulated camera spots a cube, arm goes to it
+```
+
+```python
+from arm_control import (ArmController, PerceptionPipeline, SimDetector,
+                         Detection, CameraExtrinsics, load_config)
+
+arm = ArmController.simulated(load_config())
+camera = SimDetector([Detection("cube", position_cam_mm=[300, 60, 250])])
+pipe = PerceptionPipeline(arm, camera, CameraExtrinsics.identity())
+pipe.pick_nearest_and_move(pitch_deg=0, hover_mm=40)   # hover 40mm above it
+```
+
+When the Pi camera exists, implement `ArucoCameraDetector` (OpenCV ArUco pose)
+and swap it in for `SimDetector` — nothing downstream changes. Measure
+`CameraExtrinsics` once via a hand-eye calibration.
+
 ## Roadmap
 1. ✅ Kinematics + simulator + tests
 2. ✅ Trapezoidal velocity/accel motion profiles
 3. ✅ Teach-and-repeat + homing flag
 4. ✅ Robot description + URDF export (CAD/training seam)
 5. ⬜ `StepperEncoderDriver`: GPIO + encoder closed-loop on the Pi
-6. ⬜ Command server (so the arm takes target poses / programs over the network)
-7. ⬜ CAD mesh visualizer (render STLs in the sim once exported)
-8. ⬜ **Perception module** — Pi camera → ArUco/blob detection → target `(x,y,z)`
-   feeding straight into `move_to_pose` (start with markers, not neural nets)
+6. ✅ Command server (so the arm takes target poses / programs over the network)
+7. ✅ CAD mesh visualizer — `sim/visualize.py` renders STLs listed in
+   `config/geometry.yaml` (pure-Python loader, no new deps), placed by
+   `ArmKinematics.link_frames`; falls back to the skeleton until meshes exist
+8. ✅ **Perception module** — camera → ArUco/blob detection → target `(x,y,z)`
+   feeding straight into `move_to_pose` (sim-first; `ArucoCameraDetector` stub
+   for the real Pi camera)

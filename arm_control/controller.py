@@ -16,6 +16,7 @@ import numpy as np
 
 from .config import ArmConfig
 from .drivers import JointDriver, SimDriver
+from .gripper import GripperDriver, SimGripper
 from .kinematics import ArmKinematics, Unreachable
 from .teach import Program, Waypoint
 from .trajectory import Trajectory, interpolate, plan_trapezoidal
@@ -26,12 +27,14 @@ class LimitViolation(Exception):
 
 
 class ArmController:
-    def __init__(self, cfg: ArmConfig, kin: ArmKinematics, drivers: list[JointDriver]):
+    def __init__(self, cfg: ArmConfig, kin: ArmKinematics, drivers: list[JointDriver],
+                 gripper: GripperDriver | None = None):
         if len(drivers) != len(cfg.joints):
             raise ValueError("need exactly one driver per joint")
         self.cfg = cfg
         self.kin = kin
         self.drivers = drivers
+        self.gripper = gripper
         self.homed = False
 
     @classmethod
@@ -40,7 +43,7 @@ class ArmController:
         kin = ArmKinematics.from_config(cfg)
         drivers = [SimDriver(home_deg=j.home_deg, backlash_deg=backlash_deg)
                    for j in cfg.joints]
-        return cls(cfg, kin, drivers)
+        return cls(cfg, kin, drivers, gripper=SimGripper())
 
     # --- State --------------------------------------------------------
 
@@ -97,6 +100,27 @@ class ArmController:
         traj = self.plan_to_pose(x, y, z, pitch_deg, elbow_up=elbow_up, dt=dt)
         return self.execute(traj)
 
+    def move_to_angles_deg(self, q_deg, dt=0.01) -> Trajectory:
+        """Plan + execute a synchronized move straight to target joint angles.
+
+        Joint-space twin of ``move_to_pose``: skips inverse kinematics and
+        drives the joints directly. Useful for jogging, replaying raw angles,
+        or any caller that already knows the angles it wants.
+        """
+        q_goal = np.asarray(q_deg, dtype=float)
+        if q_goal.shape != (len(self.cfg.joints),):
+            raise ValueError(
+                f"expected {len(self.cfg.joints)} joint angles, got {q_goal.shape[0]}"
+            )
+        self._check_limits(q_goal)
+        traj = plan_trapezoidal(
+            self.current_angles_deg(), q_goal,
+            v_max=self.cfg.max_vel_deg_s(),
+            a_max=self.cfg.max_accel_deg_s2(),
+            dt=dt,
+        )
+        return self.execute(traj)
+
     def home(self, dt=0.01):
         """Drive every joint to its configured home angle and mark as homed.
 
@@ -116,14 +140,38 @@ class ArmController:
 
     go_home = home  # backward-compatible alias
 
+    # --- Gripper ------------------------------------------------------
+
+    def set_gripper(self, command: str | None) -> None:
+        """Drive the gripper to ``"open"`` / ``"close"`` (``None`` = no-op).
+
+        Raises ``RuntimeError`` if a command is given but no gripper is attached.
+        """
+        if command is None:
+            return
+        if self.gripper is None:
+            raise RuntimeError("no gripper attached to this arm")
+        self.gripper.set(command)
+
+    def open_gripper(self) -> None:
+        self.set_gripper("open")
+
+    def close_gripper(self) -> None:
+        self.set_gripper("close")
+
+    def gripper_state(self) -> str | None:
+        """Current gripper state, or ``None`` if no gripper is attached."""
+        return self.gripper.state() if self.gripper is not None else None
+
     # --- Teach and repeat ---------------------------------------------
 
     def record_waypoint(self, name: str, pause_s: float = 0.0) -> Waypoint:
-        """Snapshot the current joint angles as a named waypoint."""
+        """Snapshot the current joint angles (and gripper state) as a waypoint."""
         return Waypoint(
             name=name,
             joints_deg=[round(float(a), 3) for a in self.current_angles_deg()],
             pause_s=pause_s,
+            gripper=self.gripper_state(),
         )
 
     def run_program(self, program: Program, dt=0.01, on_waypoint=None):
@@ -143,6 +191,9 @@ class ArmController:
                 dt=dt,
             )
             self.execute(traj)
+            # Actuate the gripper once the pose is reached (then the waypoint's
+            # pause_s lets a real grasp settle before the next move).
+            self.set_gripper(wp.gripper)
             trajs.append(traj)
             if on_waypoint is not None:
                 on_waypoint(wp, traj)

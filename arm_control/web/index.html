@@ -11,73 +11,121 @@
 <title>ARobot — Control Panel</title>
 <style>
   :root {
-    --bg: #0f1419; --panel: #1a2230; --line: #2b3648; --accent: #2a7de1;
-    --accent2: #e23a3a; --ok: #2ecc71; --text: #e6edf3; --muted: #8b97a7;
+    --bg: #080d18; --bg2: #0b1322; --panel: #111c30; --panel2: #0d1626;
+    --line: #213450; --text: #e8eef9; --muted: #8da3c4;
+    --blue: #2f86e6; --blue-lt: #4f9bf0; --blue-glow: rgba(47,134,230,.45);
+    --orange: #ff8a2b; --orange-glow: rgba(255,138,43,.55);
+    --green: #36e07a; --green-glow: rgba(54,224,122,.5);
+    --red: #ff4d4d;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
+    margin: 0; color: var(--text);
+    background:
+      radial-gradient(1100px 540px at 15% -10%, #16294a 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #1a1330 0%, transparent 55%),
+      var(--bg);
     font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   }
   header {
     padding: 16px 22px; border-bottom: 1px solid var(--line);
     display: flex; align-items: baseline; gap: 12px;
+    background: linear-gradient(180deg, rgba(255,138,43,.06), transparent);
   }
-  header h1 { font-size: 18px; margin: 0; }
+  header h1 {
+    font-size: 19px; margin: 0; letter-spacing: .04em;
+    background: linear-gradient(90deg, #fff, var(--orange));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
   header .sub { color: var(--muted); font-size: 12px; }
   .wrap {
-    max-width: 980px; margin: 0 auto; padding: 22px;
+    max-width: 1000px; margin: 0 auto; padding: 22px;
     display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
   }
   .card {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 16px 18px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.35);
   }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--muted); margin: 0 0 12px; }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); margin: 0 0 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before {
+    content: ""; width: 6px; height: 14px; border-radius: 3px;
+    background: var(--orange); box-shadow: 0 0 10px var(--orange-glow);
+  }
   .full { grid-column: 1 / -1; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .stat { background: #131a25; border: 1px solid var(--line); border-radius: 8px;
-    padding: 10px 12px; }
-  .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .stat { background: #0c1626; border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; }
+  .stat .k { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
   .stat .v { font-size: 18px; font-variant-numeric: tabular-nums; margin-top: 2px; }
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   input[type=number] {
-    width: 100%; padding: 8px 10px; background: #131a25; color: var(--text);
+    width: 100%; padding: 8px 10px; background: #0c1626; color: var(--text);
     border: 1px solid var(--line); border-radius: 6px; font-size: 14px;
   }
+  input[type=number]:focus { outline: none; border-color: var(--orange);
+    box-shadow: 0 0 0 3px var(--orange-glow); }
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 70px; }
   button {
-    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
-    padding: 9px 16px; font-size: 14px; cursor: pointer; font-weight: 600;
+    background: linear-gradient(180deg, var(--blue-lt), var(--blue));
+    color: #fff; border: 0; border-radius: 7px; padding: 9px 16px; font-size: 14px;
+    cursor: pointer; font-weight: 600; box-shadow: 0 2px 12px var(--blue-glow);
+    transition: transform .05s, box-shadow .15s, filter .15s;
   }
-  button:hover { filter: brightness(1.1); }
-  button.ghost { background: #233044; }
-  button.danger { background: var(--accent2); }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .btnrow { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  select { padding: 8px 10px; background: #131a25; color: var(--text);
+  button:hover { filter: brightness(1.08); box-shadow: 0 3px 18px var(--blue-glow); }
+  button:active { transform: translateY(1px); }
+  button.ghost { background: #1a2740; box-shadow: none; border: 1px solid var(--line); }
+  button.grab { background: linear-gradient(180deg, #ffa450, var(--orange));
+    box-shadow: 0 2px 14px var(--orange-glow); }
+  .btnrow { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  select { padding: 8px 10px; background: #0c1626; color: var(--text);
     border: 1px solid var(--line); border-radius: 6px; font-size: 14px; flex: 1; }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px;
-    font-size: 12px; font-weight: 600; }
-  .pill.open { background: #14361f; color: var(--ok); }
-  .pill.close { background: #3a1414; color: #ff8080; }
-  #log {
-    grid-column: 1 / -1; background: #0b0f15; border: 1px solid var(--line);
-    border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace;
-    font-size: 12px; min-height: 40px; color: var(--muted); white-space: pre-wrap;
-  }
-  #log.err { color: #ff8080; }
-  #log.ok { color: var(--ok); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-    margin-right: 6px; background: var(--accent2); }
-  .dot.live { background: var(--ok); }
-  #view { width: 100%; height: 380px; display: block; border-radius: 8px;
-    background: #0b0f15; border: 1px solid var(--line); cursor: grab;
-    touch-action: none; }
+    font-size: 12px; font-weight: 700; }
+  .pill.open { background: #103024; color: var(--green); box-shadow: 0 0 10px var(--green-glow); }
+  .pill.close { background: #3a1414; color: #ff8a8a; }
+
+  /* Sliders */
+  .slider { margin-bottom: 12px; }
+  .slider .top { display: flex; justify-content: space-between; font-size: 12px;
+    margin-bottom: 4px; }
+  .slider .top .name { color: var(--text); font-weight: 600; }
+  .slider .top .val { color: var(--orange); font-variant-numeric: tabular-nums;
+    font-weight: 700; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%;
+    height: 6px; border-radius: 4px; background: linear-gradient(90deg, #20436e, #0c1626);
+    outline: none; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffd9a8, var(--orange));
+    box-shadow: 0 0 10px var(--orange-glow); cursor: grab; border: 2px solid #1a1206; }
+  input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid #1a1206;
+    background: var(--orange); box-shadow: 0 0 10px var(--orange-glow); cursor: grab; }
+
+  #view { width: 100%; height: 420px; display: block; border-radius: 10px;
+    background: radial-gradient(700px 380px at 50% 20%, #0d1830, #070c16);
+    border: 1px solid var(--line); cursor: grab; touch-action: none; }
   #view:active { cursor: grabbing; }
-  .viewhint { color: var(--muted); font-size: 11px; margin-top: 8px; }
+  .viewhint { color: var(--muted); font-size: 11px; margin-top: 8px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .viewhint b { color: var(--orange); }
+  .linkbtn { background: none; border: 1px solid var(--line); color: var(--muted);
+    box-shadow: none; padding: 4px 10px; font-size: 11px; }
+  #log {
+    grid-column: 1 / -1; background: #060b14; border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace;
+    font-size: 12px; min-height: 40px; color: var(--muted); white-space: pre-wrap; }
+  #log.err { color: #ff8a8a; }
+  #log.ok { color: var(--green); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    margin-right: 6px; background: var(--red); }
+  .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
 </style>
 </head>
 <body>
@@ -92,11 +140,22 @@
   <div class="card full">
     <h2>Live view</h2>
     <canvas id="view"></canvas>
-    <div class="viewhint">Drag to orbit · the arm eases to each commanded pose</div>
+    <div class="viewhint">
+      <span>Sliders move the arm · <b>left-drag</b> pans · <b>right-drag</b> orbits ·
+        <b>scroll</b> zooms · touch a <b>green dot</b> + <b>Close gripper</b> to grab</span>
+      <button class="linkbtn" onclick="resetView()">Reset view</button>
+      <button class="linkbtn" onclick="resetTargets()">Reset dots</button>
+    </div>
   </div>
 
-  <!-- Live state -->
-  <div class="card full">
+  <!-- Drive the arm (sliders) -->
+  <div class="card">
+    <h2>Drive the arm</h2>
+    <div id="sliders"></div>
+  </div>
+
+  <!-- State + gripper -->
+  <div class="card">
     <h2>State</h2>
     <div class="grid4" id="angles"></div>
     <div class="grid4" style="margin-top:10px">
@@ -107,50 +166,35 @@
     </div>
     <div style="margin-top:12px">
       Gripper: <span id="grip" class="pill open">–</span>
-      &nbsp;·&nbsp; Homed: <span id="homed">–</span>
+      &nbsp;·&nbsp; Holding: <span id="holding">nothing</span>
     </div>
     <div class="btnrow">
-      <button onclick="post('/home')">Home</button>
-      <button class="ghost" onclick="post('/gripper',{state:'open'})">Open gripper</button>
-      <button class="ghost" onclick="post('/gripper',{state:'close'})">Close gripper</button>
+      <button class="ghost" onclick="goHome()">Home</button>
+      <button id="gripBtn" onclick="toggleGripper()">Close gripper</button>
     </div>
   </div>
 
-  <!-- Cartesian move -->
+  <!-- Go to a point -->
   <div class="card">
-    <h2>Move to pose (Cartesian)</h2>
+    <h2>Go to a point (X, Y, Z)</h2>
     <div class="row">
-      <div><label>X (mm)</label><input type="number" id="mx" value="250"></div>
-      <div><label>Y (mm)</label><input type="number" id="my" value="80"></div>
+      <div><label>X (mm)</label><input type="number" id="mx" value="300"></div>
+      <div><label>Y (mm)</label><input type="number" id="my" value="60"></div>
     </div>
     <div class="row" style="margin-top:8px">
-      <div><label>Z (mm)</label><input type="number" id="mz" value="300"></div>
-      <div><label>Pitch (°)</label><input type="number" id="mpitch" value="0"></div>
+      <div><label>Z (mm)</label><input type="number" id="mz" value="0"></div>
+      <div><label>Pitch (°)</label><input type="number" id="mpitch" value="-80"></div>
     </div>
-    <div class="btnrow"><button onclick="doMove()">Move</button></div>
-  </div>
-
-  <!-- Joint move -->
-  <div class="card">
-    <h2>Move joints (degrees)</h2>
-    <div class="row">
-      <div><label>Base</label><input type="number" id="jbase" value="0"></div>
-      <div><label>Shoulder</label><input type="number" id="jshoulder" value="90"></div>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <div><label>Elbow</label><input type="number" id="jelbow" value="0"></div>
-      <div><label>Wrist</label><input type="number" id="jwrist" value="0"></div>
-    </div>
-    <div class="btnrow"><button onclick="doJoints()">Move joints</button></div>
+    <div class="btnrow"><button onclick="doMove()">Go</button></div>
   </div>
 
   <!-- Programs -->
-  <div class="card full">
+  <div class="card">
     <h2>Taught programs</h2>
     <div class="row">
       <select id="prog"></select>
-      <button onclick="runProgram()">Run program</button>
-      <button class="ghost" onclick="loadPrograms()">Refresh</button>
+      <button onclick="runProgram()">Run</button>
+      <button class="ghost" onclick="loadPrograms()">↻</button>
     </div>
   </div>
 
@@ -160,245 +204,419 @@
 <script>
   const $ = (id) => document.getElementById(id);
   const JOINTS = ["base", "shoulder", "elbow", "wrist"];
+  const CONTACT_MM = 60;          // how close the tip must be to grab a dot
 
-  function log(msg, kind) {
-    const el = $("log");
-    el.className = kind || "";
-    el.textContent = msg;
-  }
+  // --- shared state --------------------------------------------------
+  let L = null;                   // link lengths [L1..L4] from /info
+  let limits = {};                // per-joint {min,max} from /info
+  let target = null;              // commanded joint angles (deg)
+  let display = null;             // drawn angles, eased toward target
+  let az = 0.6, el = 0.5;         // camera orbit (right-drag)
+  let zoom = 1, panX = 0, panY = 0;  // zoom (wheel) + pan (left-drag)
+  let dirty = true;                  // redraw only when something changes
+  let srvGrip = "open", srvHomed = false;
+  let sliderDragging = false, dragTimer = null;
 
+  // pick-and-place dots on the floor
+  const INIT = [
+    {id: 1, x: 300, y: 70, z: 0},
+    {id: 2, x: 220, y: -250, z: 0},
+    {id: 3, x: -170, y: 250, z: 0},
+  ];
+  let targets = INIT.map((t) => ({...t, held: false, falling: false, vz: 0}));
+  let heldId = null;
+
+  function log(msg, kind) { const el = $("log"); el.className = kind || ""; el.textContent = msg; }
   function setConn(live) {
     $("conn").className = "dot" + (live ? " live" : "");
     $("connText").textContent = live ? "connected" : "offline";
   }
+  const dist3 = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
 
-  // Render the State card from a /state payload.
-  function render(state) {
+  // --- State panel ---------------------------------------------------
+  function setStatePanel(angles, pose, gripper, holding) {
     const ang = $("angles");
     ang.innerHTML = "";
-    for (const j of JOINTS) {
-      const v = state.angles_deg[j];
+    JOINTS.forEach((j, i) => {
       ang.insertAdjacentHTML("beforeend",
         `<div class="stat"><div class="k">${j}</div>
-         <div class="v">${v.toFixed(1)}°</div></div>`);
+         <div class="v">${angles[i].toFixed(1)}°</div></div>`);
+    });
+    $("px").textContent = pose.x.toFixed(0);
+    $("py").textContent = pose.y.toFixed(0);
+    $("pz").textContent = pose.z.toFixed(0);
+    $("ppitch").textContent = pose.pitch_deg.toFixed(1) + "°";
+    const g = $("grip"); g.textContent = gripper; g.className = "pill " + gripper;
+    $("holding").textContent = holding == null ? "nothing" : ("dot " + holding);
+    const b = $("gripBtn");
+    if (b) {                                  // closed -> orange, open -> blue
+      const closed = gripper === "close";
+      b.textContent = closed ? "Open gripper" : "Close gripper";
+      b.className = closed ? "grab" : "";
     }
-    $("px").textContent = state.pose.x.toFixed(0);
-    $("py").textContent = state.pose.y.toFixed(0);
-    $("pz").textContent = state.pose.z.toFixed(0);
-    $("ppitch").textContent = state.pose.pitch_deg.toFixed(1) + "°";
-    const g = $("grip");
-    g.textContent = state.gripper;
-    g.className = "pill " + state.gripper;
-    $("homed").textContent = state.homed ? "yes" : "no";
+  }
 
-    // Feed the 3D view: the render loop eases toward these angles.
-    target = JOINTS.map((j) => state.angles_deg[j]);
-    if (!display) display = target.slice();   // first sample: snap, don't sweep
+  // Apply a server /state payload (authoritative): sync sliders + 3D + panel.
+  function render(state) {
+    srvGrip = state.gripper; srvHomed = state.homed;
+    const angles = JOINTS.map((j) => state.angles_deg[j]);
+    setStatePanel(angles, state.pose, state.gripper, heldId);
+    target = angles.slice();
+    if (!display) display = target.slice();
+    syncSliders(angles);
+    dirty = true;
+  }
+
+  // Recompute the panel locally while dragging (no server round-trip).
+  function localState() {
+    const q = target;
+    const tip = fk(q)[4];
+    const pitch = q[1] + q[2] + q[3];
+    setStatePanel(q, {x: tip[0], y: tip[1], z: tip[2], pitch_deg: pitch},
+                  srvGrip, heldId);
   }
 
   async function refresh() {
     try {
-      const r = await fetch("/state");
-      const s = await r.json();
-      render(s);
+      const s = await (await fetch("/state")).json();
+      if (!sliderDragging) render(s);
       setConn(true);
-    } catch (e) {
-      setConn(false);
-    }
+    } catch (e) { setConn(false); }
   }
 
-  // POST a command; show the result and update state.
   async function post(path, body) {
     try {
       const r = await fetch(path, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
+        method: "POST", headers: {"Content-Type": "application/json"},
         body: body ? JSON.stringify(body) : null,
       });
       const data = await r.json();
-      if (!r.ok) {
-        log(`${path} → ${r.status}: ${data.detail || data.error}`, "err");
-        return null;
-      }
+      if (!r.ok) { log(`${path} → ${r.status}: ${data.detail || data.error}`, "err"); return null; }
       if (data.state) render(data.state);
-      log(`${path} ✓  ${summarize(data)}`, "ok");
       return data;
-    } catch (e) {
-      log(`${path} failed: ${e}`, "err");
-      return null;
+    } catch (e) { log(`${path} failed: ${e}`, "err"); return null; }
+  }
+
+  // --- Sliders -------------------------------------------------------
+  function buildSliders(joints) {
+    const box = $("sliders"); box.innerHTML = "";
+    joints.forEach((j) => {
+      limits[j.name] = {min: j.min_deg, max: j.max_deg};
+      box.insertAdjacentHTML("beforeend", `
+        <div class="slider">
+          <div class="top"><span class="name">${j.name}</span>
+            <span class="val" id="val-${j.name}">${j.home_deg.toFixed(0)}°</span></div>
+          <input type="range" id="sl-${j.name}" min="${j.min_deg}" max="${j.max_deg}"
+                 step="1" value="${j.home_deg}">
+        </div>`);
+      const sl = $("sl-" + j.name);
+      sl.addEventListener("input", onSliderInput);
+      sl.addEventListener("change", onSliderChange);
+    });
+  }
+  function syncSliders(angles) {
+    JOINTS.forEach((j, i) => {
+      const sl = $("sl-" + j); if (!sl) return;
+      sl.value = angles[i];
+      $("val-" + j).textContent = angles[i].toFixed(0) + "°";
+    });
+  }
+  function onSliderInput() {
+    sliderDragging = true;
+    clearTimeout(dragTimer);
+    dragTimer = setTimeout(() => { sliderDragging = false; }, 500);
+    target = JOINTS.map((j) => +$("sl-" + j).value);
+    JOINTS.forEach((j, i) => { $("val-" + j).textContent = target[i].toFixed(0) + "°"; });
+    localState(); dirty = true;
+  }
+  function onSliderChange() {
+    post("/move_joints", {joints_deg: JOINTS.map((j) => +$("sl-" + j).value)});
+  }
+
+  // --- Gripper + pick/place game ------------------------------------
+  function closeGripper() {
+    if (display && heldId === null) {
+      const tip = fk(display)[4];
+      let best = null, bd = CONTACT_MM;
+      targets.forEach((t) => {
+        if (t.held) return;
+        const d = dist3(tip, [t.x, t.y, t.z]);
+        if (d < bd) { bd = d; best = t; }
+      });
+      if (best) { best.held = true; heldId = best.id; log(`picked up dot ${best.id} ✓`, "ok"); }
+      else { log("close gripper — no dot within reach of the tip", ""); }
     }
+    dirty = true;
+    post("/gripper", {state: "close"});
   }
-
-  function summarize(d) {
-    const bits = [];
-    if (d.steps != null) bits.push(`${d.steps} steps`);
-    if (d.waypoints) bits.push(`${d.waypoints.length} waypoints`);
-    return bits.join(", ");
+  function openGripper() {
+    if (heldId !== null) {
+      const t = targets.find((x) => x.id === heldId);
+      if (t) { t.held = false; t.falling = true; t.vz = 0; }   // fall from tip height
+      log(`dropped dot ${heldId} — released to floor`, "ok");
+      heldId = null;
+    }
+    dirty = true;
+    post("/gripper", {state: "open"});
   }
-
-  function doMove() {
-    post("/move", {
-      x: +$("mx").value, y: +$("my").value,
-      z: +$("mz").value, pitch_deg: +$("mpitch").value,
-    });
+  function toggleGripper() { if (srvGrip === "close") openGripper(); else closeGripper(); }
+  function resetTargets() {
+    targets = INIT.map((t) => ({...t, held: false, falling: false, vz: 0}));
+    heldId = null; log("dots reset", ""); dirty = true;
   }
+  function resetView() { az = 0.6; el = 0.5; zoom = 1; panX = 0; panY = 0; dirty = true; }
+  function goHome() { post("/home"); }
 
-  function doJoints() {
-    post("/move_joints", {
-      joints_deg: [+$("jbase").value, +$("jshoulder").value,
-                   +$("jelbow").value, +$("jwrist").value],
-    });
-  }
-
-  async function loadPrograms() {
-    try {
-      const r = await fetch("/programs");
-      const { programs } = await r.json();
-      const sel = $("prog");
-      sel.innerHTML = "";
-      if (!programs.length) {
-        sel.insertAdjacentHTML("beforeend", `<option value="">(none)</option>`);
-      }
-      for (const p of programs) {
-        sel.insertAdjacentHTML("beforeend", `<option value="${p}">${p}</option>`);
-      }
-    } catch (e) { log("could not load programs: " + e, "err"); }
-  }
-
-  function runProgram() {
-    const name = $("prog").value;
-    if (!name) { log("no program selected", "err"); return; }
-    post("/run_program", { name });
-  }
-
-  // ---- Live 3D view -------------------------------------------------
-  // Forward kinematics mirrors arm_control/kinematics.py: a base yaw plus a
-  // planar 3-link chain (shoulder/elbow/wrist) in the vertical plane.
-  let L = null;                 // link lengths [L1,L2,L3,L4] from /info
-  let target = null;            // commanded joint angles (deg)
-  let display = null;           // currently-drawn angles (eased toward target)
-  let az = 0.6, el = 0.5;       // view azimuth / elevation (radians)
-
-  const canvas = $("view");
-  const ctx = canvas.getContext("2d");
+  // --- 3D view (forward kinematics mirrors kinematics.py) ------------
+  const canvas = $("view"), ctx = canvas.getContext("2d");
 
   function fk(qDeg) {
-    // qDeg = [base, shoulder, elbow, wrist] in degrees -> joint world points.
     const [L1, L2, L3, L4] = L;
     const t1 = qDeg[0] * Math.PI / 180;
     const a2 = qDeg[1] * Math.PI / 180;
     const a3 = a2 + qDeg[2] * Math.PI / 180;
     const a4 = a3 + qDeg[3] * Math.PI / 180;
-    const er = L2 * Math.cos(a2),        ez = L1 + L2 * Math.sin(a2);
-    const wr = er + L3 * Math.cos(a3),   wz = ez + L3 * Math.sin(a3);
-    const tr = wr + L4 * Math.cos(a4),   tz = wz + L4 * Math.sin(a4);
+    const er = L2*Math.cos(a2),      ez = L1 + L2*Math.sin(a2);
+    const wr = er + L3*Math.cos(a3), wz = ez + L3*Math.sin(a3);
+    const tr = wr + L4*Math.cos(a4), tz = wz + L4*Math.sin(a4);
     const c1 = Math.cos(t1), s1 = Math.sin(t1);
-    const W = (r, z) => [r * c1, r * s1, z];
-    return [
-      [0, 0, 0],            // base
-      [0, 0, L1],           // shoulder
-      W(er, ez),            // elbow
-      W(wr, wz),            // wrist
-      W(tr, tz),            // tip
-    ];
+    const W = (r, z) => [r*c1, r*s1, z];
+    return [[0,0,0], [0,0,L1], W(er,ez), W(wr,wz), W(tr,tz)];
   }
 
-  function project(p, cx, cy, scale) {
-    // Orbit about world Z (up), then tilt by elevation -> 2D screen.
-    const ca = Math.cos(az), sa = Math.sin(az);
-    const xr = p[0] * ca - p[1] * sa;
-    const yr = p[0] * sa + p[1] * ca;
-    const ce = Math.cos(el), se = Math.sin(el);
-    return [cx + xr * scale, cy + (yr * se - p[2] * ce) * scale];
+  // --- CAD mesh rendering (mirrors kinematics link_frames / joint_frames) ---
+  const RAD = Math.PI / 180;
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const vdot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const vsub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+  const vnorm = (a) => { const m = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/m, a[1]/m, a[2]/m]; };
+  const LIGHT = vnorm([0.35, 0.45, 0.9]);
+
+  let meshParts = null;
+  async function loadMeshes() {
+    try {
+      const data = await (await fetch("/meshes")).json();
+      meshParts = data.parts.map((p) => ({kind: p.kind, name: p.name, v: Float32Array.from(p.tris)}));
+    } catch (e) { log("could not load /meshes: " + e, "err"); }
   }
 
-  function drawFloor(cx, cy, scale) {
-    const reach = L[0] + L[1] + L[2] + L[3];
-    ctx.strokeStyle = "#1c2636";
-    ctx.lineWidth = 1;
-    const step = 100, n = Math.ceil(reach / step);
-    for (let i = -n; i <= n; i++) {
-      const a = project([i * step, -n * step, 0], cx, cy, scale);
-      const b = project([i * step, n * step, 0], cx, cy, scale);
-      const c = project([-n * step, i * step, 0], cx, cy, scale);
-      const d = project([n * step, i * step, 0], cx, cy, scale);
-      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.stroke();
+  function linkFrames(q) {
+    const [L1, L2, L3, L4] = L;
+    const t1 = q[0]*RAD, t2 = q[1]*RAD, t3 = q[2]*RAD, t4 = q[3]*RAD;
+    const c1 = Math.cos(t1), s1 = Math.sin(t1), n = [s1, -c1, 0];
+    const armR = (a) => { const ca = Math.cos(a), sa = Math.sin(a); const d = [c1*ca, s1*ca, sa]; return [d, n, cross(d, n)]; };
+    const p = fk(q);
+    return {
+      column:  {cols: [[c1,s1,0], [-s1,c1,0], [0,0,1]], p: p[0]},
+      upper:   {cols: armR(t2),       p: p[1]},
+      forearm: {cols: armR(t2+t3),    p: p[2]},
+      tool:    {cols: armR(t2+t3+t4), p: p[3]},
+    };
+  }
+  function jointFrames(q) {
+    const p = fk(q); const t1 = q[0]*RAD, c1 = Math.cos(t1), s1 = Math.sin(t1);
+    const n = [s1, -c1, 0], z = [0, 0, 1];
+    const fr = (axis, pt) => {
+      const a = vnorm(axis), ref = Math.abs(a[0]) < 0.9 ? [1,0,0] : [0,1,0];
+      const u = vnorm(cross(a, ref));
+      return {cols: [u, cross(a, u), a], p: pt};
+    };
+    return { base: fr(z,p[0]), shoulder: fr(n,p[1]), elbow: fr(n,p[2]), wrist: fr(n,p[3]) };
+  }
+  function worldPt(fr, x, y, z) {
+    const [d, n, b] = fr.cols, p = fr.p;
+    return [p[0]+d[0]*x+n[0]*y+b[0]*z, p[1]+d[1]*x+n[1]*y+b[1]*z, p[2]+d[2]*x+n[2]*y+b[2]*z];
+  }
+
+  // Transform every triangle by its part's live frame, depth-sort, flat-shade.
+  function drawMeshes(cx, cy, scale) {
+    const lf = linkFrames(display), jf = jointFrames(display);
+    const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+    const wv = cross([ca, -sa, 0], [sa*se, ca*se, -ce]);   // screen-depth axis
+    const tris = [];
+    for (const part of meshParts) {
+      const fr = part.kind === "link" ? lf[part.name] : jf[part.name];
+      if (!fr) continue;
+      const base = part.kind === "link" ? [150, 185, 225] : [206, 140, 60];
+      const d = part.v;
+      for (let i = 0; i < d.length; i += 9) {
+        const A = worldPt(fr, d[i],   d[i+1], d[i+2]);
+        const B = worldPt(fr, d[i+3], d[i+4], d[i+5]);
+        const C = worldPt(fr, d[i+6], d[i+7], d[i+8]);
+        const nrm = vnorm(cross(vsub(B, A), vsub(C, A)));
+        const sh = 0.30 + 0.70 * Math.abs(vdot(nrm, LIGHT));
+        const depth = vdot(A, wv) + vdot(B, wv) + vdot(C, wv);
+        tris.push([project(A,cx,cy,scale), project(B,cx,cy,scale), project(C,cx,cy,scale), depth, sh, base]);
+      }
+    }
+    tris.sort((a, b) => a[3] - b[3]);              // painter's algorithm: far first
+    ctx.lineWidth = 0.6; ctx.lineJoin = "round";
+    for (const t of tris) {
+      const s = t[4], b = t[5];
+      ctx.fillStyle = `rgb(${b[0]*s|0},${b[1]*s|0},${b[2]*s|0})`;
+      // darker facet edges so each part reads as a distinct solid (and any
+      // interference between parts is visible rather than blended away)
+      ctx.strokeStyle = `rgb(${b[0]*s*0.4|0},${b[1]*s*0.4|0},${b[2]*s*0.4|0})`;
+      ctx.beginPath(); ctx.moveTo(t[0][0],t[0][1]); ctx.lineTo(t[1][0],t[1][1]); ctx.lineTo(t[2][0],t[2][1]); ctx.closePath();
+      ctx.fill(); ctx.stroke();
     }
   }
-
+  function project(p, cx, cy, scale) {
+    const ca = Math.cos(az), sa = Math.sin(az);
+    const xr = p[0]*ca - p[1]*sa, yr = p[0]*sa + p[1]*ca;
+    const ce = Math.cos(el), se = Math.sin(el);
+    return [cx + xr*scale, cy + (yr*se - p[2]*ce)*scale];
+  }
+  function drawFloor(cx, cy, scale) {
+    const reach = L[0]+L[1]+L[2]+L[3];
+    ctx.strokeStyle = "#17243c"; ctx.lineWidth = 1;
+    const step = 100, n = Math.ceil(reach/step);
+    for (let i = -n; i <= n; i++) {
+      let a = project([i*step,-n*step,0],cx,cy,scale), b = project([i*step,n*step,0],cx,cy,scale);
+      let c = project([-n*step,i*step,0],cx,cy,scale), d = project([n*step,i*step,0],cx,cy,scale);
+      ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c[0],c[1]); ctx.lineTo(d[0],d[1]); ctx.stroke();
+    }
+  }
+  function disc(sp, r, fill, glow) {
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 16; }
+    ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(sp[0], sp[1], r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
   function draw() {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr; canvas.height = h * dpr;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+    if (canvas.width !== w*dpr || canvas.height !== h*dpr) { canvas.width = w*dpr; canvas.height = h*dpr; }
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
     if (!L || !display) return;
 
-    const reach = L[0] + L[1] + L[2] + L[3];
-    const cx = w / 2, cy = h * 0.62;
-    const scale = (Math.min(w, h) * 0.42) / reach;
-
+    const reach = L[0]+L[1]+L[2]+L[3];
+    const scale = (Math.min(w,h)*0.42)/reach * zoom;       // wheel zoom
+    const cx = w/2 + panX, cy = h*0.64 + panY;             // left-drag pan
     drawFloor(cx, cy, scale);
+    if (meshParts) drawMeshes(cx, cy, scale);              // CAD shells
 
+    const tipw = fk(display)[4];
+    // green dots (skip the held one; it's drawn at the tip)
+    targets.forEach((t) => {
+      const near = !t.held && heldId === null && dist3(tipw, [t.x,t.y,t.z]) < CONTACT_MM;
+      const sp = project([t.x, t.y, t.z], cx, cy, scale);
+      if (near) {                                   // pickable: orange halo
+        ctx.strokeStyle = "#ff8a2b"; ctx.lineWidth = 2;
+        ctx.shadowColor = "rgba(255,138,43,.7)"; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(sp[0], sp[1], 12, 0, 7); ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      if (!t.held) disc(sp, 7, "#36e07a", "rgba(54,224,122,.6)");
+    });
+
+    // arm skeleton — only when there are no CAD shells to show
     const pts = fk(display).map((p) => project(p, cx, cy, scale));
-    // links
-    ctx.strokeStyle = "#2a7de1"; ctx.lineWidth = 5; ctx.lineJoin = "round";
-    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
-    // joints
-    const names = ["", "shoulder", "elbow", "wrist", ""];
-    for (let i = 0; i < pts.length; i++) {
-      ctx.fillStyle = i === pts.length - 1 ? "#e23a3a" : "#9bbcdf";
-      ctx.beginPath();
-      ctx.arc(pts[i][0], pts[i][1], i === pts.length - 1 ? 7 : 5, 0, 7);
-      ctx.fill();
+    if (!meshParts) {
+      ctx.strokeStyle = "#2f86e6"; ctx.lineWidth = 5; ctx.lineJoin = "round";
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+      for (let i = 1; i < pts.length - 1; i++) disc(pts[i], 5, "#9bbcdf");
+    }
+    disc(pts[pts.length-1], 7, "#ff4d4d", "rgba(255,77,77,.5)");   // tool tip
+
+    // a held dot rides on the tip with an orange ring
+    if (heldId !== null) {
+      const sp = pts[pts.length-1];
+      disc(sp, 7, "#36e07a", "rgba(54,224,122,.8)");
+      ctx.strokeStyle = "#ff8a2b"; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.arc(sp[0], sp[1], 11, 0, 7); ctx.stroke();
     }
   }
-
+  const MAX_STEP = 5;             // deg/frame cap -> smooth, never an aggressive spin
+  const GRAV = 0.7, REST = 0.5;   // drop physics: gravity (mm/frame^2) + bounciness
   function loop() {
+    let animating = false;
     if (display && target) {
-      // Exponential ease toward the commanded pose (handles wrap-free deltas).
       for (let i = 0; i < display.length; i++) {
-        display[i] += (target[i] - display[i]) * 0.18;
+        let d = (target[i] - display[i]) * 0.2;
+        d = Math.max(-MAX_STEP, Math.min(MAX_STEP, d));   // bound the rotation speed
+        display[i] += d;
+        if (Math.abs(target[i] - display[i]) > 0.02) animating = true;
       }
     }
-    draw();
+    if (display) {
+      const tip = fk(display)[4];
+      if (heldId !== null) { const t = targets.find((x) => x.id === heldId); if (t) { t.x = tip[0]; t.y = tip[1]; t.z = tip[2]; } }
+      targets.forEach((t) => {
+        if (!t.falling) return;
+        animating = true;
+        t.vz -= GRAV; t.z += t.vz;                          // gravity
+        if (t.z <= 0) {                                     // hit the floor
+          t.z = 0;
+          if (Math.abs(t.vz) < 2) { t.vz = 0; t.falling = false; }   // settle
+          else t.vz = -t.vz * REST;                         // bounce, a bit smaller
+        }
+      });
+    }
+    if (animating) dirty = true;
+    if (dirty) { draw(); dirty = false; }                  // redraw only when needed
     requestAnimationFrame(loop);
   }
 
-  // Drag to orbit the camera.
-  let dragging = false, lastX = 0, lastY = 0;
+  // camera: left-drag pans, right-drag orbits, wheel zooms — all bounded.
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  let drag = null, lx = 0, ly = 0;
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());  // allow right-drag
   canvas.addEventListener("pointerdown", (e) => {
-    dragging = true; lastX = e.clientX; lastY = e.clientY;
-    canvas.setPointerCapture(e.pointerId);
+    drag = e.button === 2 ? "orbit" : "pan";
+    lx = e.clientX; ly = e.clientY;
+    canvas.setPointerCapture(e.pointerId); e.preventDefault();
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    az += (e.clientX - lastX) * 0.01;
-    el = Math.max(0.05, Math.min(1.4, el + (e.clientY - lastY) * 0.01));
-    lastX = e.clientX; lastY = e.clientY;
+    if (!drag) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    if (drag === "orbit") {
+      az += dx * 0.01;
+      el = clamp(el + dy * 0.01, 0.08, 1.45);
+    } else {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      panX = clamp(panX + dx, -w * 0.55, w * 0.55);   // can't leave the area
+      panY = clamp(panY + dy, -h * 0.55, h * 0.55);
+    }
+    lx = e.clientX; ly = e.clientY; dirty = true;
   });
-  canvas.addEventListener("pointerup", () => { dragging = false; });
+  const endDrag = () => { drag = null; };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoom = clamp(zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.45, 4.0);  // zoom bounds
+    dirty = true;
+  }, { passive: false });
 
+  // --- data + programs ----------------------------------------------
   async function loadInfo() {
     try {
-      const r = await fetch("/info");
-      const info = await r.json();
-      const m = info.links_mm;
-      L = [m.base_height, m.upper_arm, m.forearm, m.tool];
+      const info = await (await fetch("/info")).json();
+      const m = info.links_mm; L = [m.base_height, m.upper_arm, m.forearm, m.tool];
+      buildSliders(info.joints);
     } catch (e) { log("could not load /info: " + e, "err"); }
   }
+  async function loadPrograms() {
+    try {
+      const { programs } = await (await fetch("/programs")).json();
+      const sel = $("prog"); sel.innerHTML = "";
+      if (!programs.length) sel.insertAdjacentHTML("beforeend", `<option value="">(none)</option>`);
+      for (const p of programs) sel.insertAdjacentHTML("beforeend", `<option value="${p}">${p}</option>`);
+    } catch (e) { log("could not load programs: " + e, "err"); }
+  }
+  function runProgram() {
+    const name = $("prog").value;
+    if (!name) { log("no program selected", "err"); return; }
+    post("/run_program", { name });
+  }
+  function doMove() {
+    post("/move", { x:+$("mx").value, y:+$("my").value, z:+$("mz").value, pitch_deg:+$("mpitch").value });
+  }
 
-  // Boot: load geometry + programs, start the render loop, then poll state.
-  loadInfo();
-  loadPrograms();
-  refresh();
-  requestAnimationFrame(loop);
-  setInterval(refresh, 1000);
+  // boot
+  (async () => { await loadInfo(); loadMeshes(); loadPrograms(); refresh(); requestAnimationFrame(loop); setInterval(refresh, 1000); })();
 </script>
 </body>
 </html>

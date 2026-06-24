@@ -141,6 +141,16 @@ def test_ui_file_loads():
     assert b"ARobot" in html and b"<html" in html.lower()
 
 
+def test_meshes_endpoint_returns_parts():
+    status, body = make_service().dispatch("GET", "/meshes", None)
+    assert status == 200
+    kinds = {(p["kind"], p["name"]) for p in body["parts"]}
+    assert ("link", "upper") in kinds          # a link shell
+    assert ("joint", "shoulder") in kinds      # a joint drive
+    up = next(p for p in body["parts"] if p["name"] == "upper")
+    assert up["tris"] and len(up["tris"]) % 9 == 0   # flat xyz triples, 3 per triangle
+
+
 def test_trailing_slash_is_normalized():
     status, _ = make_service().dispatch("GET", "/state/", None)
     assert status == 200

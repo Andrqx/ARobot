@@ -64,6 +64,7 @@ ENDPOINTS = {
     "GET /state": "current joint angles, tool pose, homed flag",
     "GET /info": "link lengths, joint limits, reach envelope",
     "GET /programs": "names of taught programs on disk",
+    "GET /meshes": "CAD mesh triangles (links + joints) in local frames",
     "POST /home": "run the homing routine",
     "POST /move": "Cartesian move — body {x, y, z, pitch_deg?, elbow_up?}",
     "POST /move_joints": "joint-space move — body {joints_deg: [...]}",
@@ -126,6 +127,18 @@ class ArmService:
         names = sorted(p.stem for p in PROGRAMS_DIR.glob("*.json"))
         return {"programs": names}
 
+    def meshes(self) -> dict:
+        """CAD triangles for the browser view: each part's verts in its own
+        local frame (link shells + joint drives). The client transforms them by
+        the live link/joint frames each frame. Empty list if no STLs exist."""
+        from sim.visualize import load_link_meshes, load_joint_meshes
+        parts = []
+        for kind, loader in (("link", load_link_meshes), ("joint", load_joint_meshes)):
+            for name, verts in loader().items():
+                parts.append({"kind": kind, "name": name,
+                              "tris": verts.round(1).reshape(-1).tolist()})
+        return {"parts": parts}
+
     # --- Commands ------------------------------------------------------
 
     def home(self) -> dict:
@@ -186,6 +199,8 @@ class ArmService:
                 return 200, self.info()
             if route == ("GET", "/programs"):
                 return 200, self.programs()
+            if route == ("GET", "/meshes"):
+                return 200, self.meshes()
             if route == ("POST", "/home"):
                 return 200, self.home()
             if route == ("POST", "/move"):

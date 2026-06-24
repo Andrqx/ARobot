@@ -172,6 +172,44 @@ class ArmKinematics:
         """Degree-input wrapper for :meth:`link_frames`."""
         return self.link_frames(np.radians(q_deg))
 
+    def joint_frames(self, q):
+        """Joint angles (rad) -> world (R, pivot) for each *joint*.
+
+        Unlike :meth:`link_frames` (which frames the links), this frames the
+        joints themselves — for mounting a joint component (e.g. a cycloidal
+        drive) centered on the pivot and spinning about the joint axis. The
+        frame's **local +Z is the joint's rotation axis**; the other two axes
+        span the plane of rotation (orientation within that plane is arbitrary,
+        which is fine for an axisymmetric housing).
+
+        base spins about vertical Z; shoulder/elbow/wrist pitch about the
+        arm-plane normal.
+        """
+        points, _ = self.forward(q)
+        t1 = q[0]
+        c1, s1 = np.cos(t1), np.sin(t1)
+        n = np.array([s1, -c1, 0.0])        # pitch axis (arm-plane normal)
+        z = np.array([0.0, 0.0, 1.0])       # base yaw axis
+
+        def frame(axis, p):
+            a = np.asarray(axis, dtype=float)
+            a = a / np.linalg.norm(a)
+            ref = np.array([1.0, 0.0, 0.0]) if abs(a[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+            u = np.cross(a, ref); u /= np.linalg.norm(u)
+            w = np.cross(a, u)              # u x w == a (right-handed)
+            return np.column_stack((u, w, a)), np.asarray(p, dtype=float)
+
+        return {
+            "base": frame(z, points["base"]),
+            "shoulder": frame(n, points["shoulder"]),
+            "elbow": frame(n, points["elbow"]),
+            "wrist": frame(n, points["wrist"]),
+        }
+
+    def joint_frames_deg(self, q_deg):
+        """Degree-input wrapper for :meth:`joint_frames`."""
+        return self.joint_frames(np.radians(q_deg))
+
     def inverse_deg(self, x, y, z, pitch_deg, elbow_up=True):
         q = self.inverse(x, y, z, np.radians(pitch_deg), elbow_up)
         return np.degrees(q)

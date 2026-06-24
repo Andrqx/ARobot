@@ -43,9 +43,13 @@ python -m sim.visualize          # 3D animated move (renders CAD meshes if prese
 pytest -q                        # prove the kinematics
 ```
 
-`sim.visualize` draws the stick-figure skeleton today; the moment you export
-STLs and list them in `config/geometry.yaml`, it renders the real parts moving
-on the arm instead — no code change.
+`sim.visualize` draws the stick-figure skeleton until you export STLs and list
+them in `config/geometry.yaml`; then it renders the real parts moving on the
+arm — no code change. Two mesh maps: `links:` (shells placed along each link,
+with optional per-part `mesh_rotation_deg`/`mesh_translation_mm` to align CAD
+that wasn't authored pivot-at-origin) and `joints:` (drives like the cycloidal
+housing, auto-centered on each pivot and spun about the joint axis). STEP files
+convert with `examples/convert_step.py` (needs `pip install gmsh`).
 
 ## The key design idea: one seam to hardware
 All motion goes through the `JointDriver` interface:

@@ -12,16 +12,35 @@
 
 meshes_dir: meshes
 
+# Test shells (converted from Shells/Test Shells/*.STEP via
+# examples/convert_step.py). They were authored lying flat with the long axis
+# on Y and the origin centered, so each gets an alignment transform to bring it
+# into its link's local frame (long axis +X / column +Z, origin at the pivot).
 links:
   column:                  # base column driven by the base yaw joint
-    mesh: null             # e.g. meshes/column.stl
+    mesh: meshes/column.stl
+    mesh_rotation_deg: [90, 0, 0]      # stand the flat slab up (Y -> Z)
+    mesh_translation_mm: [0, 0, 115]   # base sits on the floor
     mass_kg: 1.5           # cycloidal base module (NEMA 23 + gearbox)
   upper:                   # upper arm (shoulder -> elbow)
-    mesh: null
+    mesh: meshes/upper.stl
+    mesh_rotation_deg: [0, 0, -90]     # long axis Y -> X
+    mesh_translation_mm: [150, 0, 0]   # center -> shoulder pivot at origin
     mass_kg: 0.6           # aluminum link + elbow motor module
   forearm:                 # forearm (elbow -> wrist)
-    mesh: null
+    mesh: meshes/forearm.stl
+    mesh_rotation_deg: [0, 0, -90]
+    mesh_translation_mm: [115, 0, 0]   # center -> elbow pivot at origin
     mass_kg: 0.4
-  tool:                    # wrist -> tool tip
+  tool:                    # wrist -> tool tip (no shell exported yet)
     mesh: null
     mass_kg: 0.25          # wrist servo + gripper
+
+# Joint drives — the cycloidal housing sits at the pivot BETWEEN two links and
+# spins about that joint's axis. With no transform the part is auto-centered on
+# its bounding box, so its centre lands on the pivot (the fillet-circle centre).
+joints:
+  shoulder:                # between column and humerus
+    mesh: meshes/cycloidal.stl
+  elbow:                   # between humerus and forearm
+    mesh: meshes/cycloidal.stl

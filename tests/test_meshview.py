@@ -139,15 +139,78 @@ def test_plot_pose_with_meshes_no_display(tmp_path):
     ax = fig.add_subplot(111, projection="3d")
     # Hand it a synthetic mesh per link so the mesh path is exercised.
     link_meshes = {name: _TRI * 50 for name in ["column", "upper", "forearm", "tool"]}
-    plot_pose(kin, [0, 90, 0, 0], ax=ax, link_meshes=link_meshes)
+    plot_pose(kin, [0, 90, 0, 0], ax=ax, link_meshes=link_meshes, joint_meshes={})
     assert len(ax.collections) == 4   # one Poly3DCollection per link
     plt.close(fig)
 
 
-def test_load_link_meshes_empty_when_all_null():
-    # The shipped geometry.yaml has every mesh: null -> nothing to load.
+def test_mesh_transform_rotates_and_translates():
+    # Rotate -90deg about Z (maps +Y -> +X), then translate +10 in X.
+    from sim.visualize import _apply_mesh_transform
+    out = _apply_mesh_transform(
+        _TRI.copy(),
+        {"mesh_rotation_deg": [0, 0, -90], "mesh_translation_mm": [10, 0, 0]},
+    )
+    # vertices (0,0,0)->(10,0,0); (1,0,0)->(10,-1,0); (0,1,0)->(11,0,0)
+    assert np.allclose(out[0], [[10, 0, 0], [10, -1, 0], [11, 0, 0]], atol=1e-6)
+
+
+def test_mesh_transform_noop_when_absent():
+    from sim.visualize import _apply_mesh_transform
+    out = _apply_mesh_transform(_TRI.copy(), {})
+    assert np.allclose(out, _TRI)
+
+
+def test_configured_shells_load_and_align():
+    # geometry.yaml now points at the converted test shells; confirm they load
+    # and the alignment transform places them sensibly (origin near a pivot).
     from sim.visualize import load_link_meshes
-    assert load_link_meshes() == {}
+    meshes = load_link_meshes()
+    assert {"column", "upper", "forearm"} <= set(meshes)
+    # upper arm should span roughly shoulder(0) -> elbow(300) along +X.
+    xs = meshes["upper"].reshape(-1, 3)[:, 0]
+    assert xs.min() < 20 and xs.max() > 280
+
+
+# --- joint frames + joint (cyclo) drives ----------------------------------
+
+def test_joint_frame_pivots_and_axes():
+    kin = make_kin()
+    f = kin.joint_frames_deg([0, 90, 0, 0])
+    assert np.allclose(f["base"][1], [0, 0, 0])
+    assert np.allclose(f["shoulder"][1], [0, 0, 150])     # L1
+    assert np.allclose(f["elbow"][1], [0, 0, 450])        # L1 + L2 (arm up)
+    # local +Z is the joint axis: base = vertical, pitch joints = -Y at yaw 0.
+    assert np.allclose(f["base"][0][:, 2], [0, 0, 1])
+    assert np.allclose(f["shoulder"][0][:, 2], [0, -1, 0])
+    assert np.allclose(f["elbow"][0][:, 2], [0, -1, 0])
+
+
+def test_joint_frames_orthonormal():
+    kin = make_kin()
+    for R, _ in kin.joint_frames_deg([20, 60, -30, 15]).values():
+        assert np.allclose(R @ R.T, np.eye(3), atol=1e-9)
+        assert np.isclose(np.linalg.det(R), 1.0, atol=1e-9)
+
+
+def test_joint_meshes_centered_on_pivot():
+    from sim.visualize import load_joint_meshes
+    jm = load_joint_meshes()
+    assert {"shoulder", "elbow"} <= set(jm)
+    flat = jm["shoulder"].reshape(-1, 3)
+    center = (flat.min(0) + flat.max(0)) / 2.0
+    assert np.allclose(center, 0, atol=1e-6)   # auto-centered -> sits on pivot
+
+
+def test_cyclo_drive_is_vertical_disc_at_home():
+    # A pitch-joint drive should be thin along Y (the rotation axis) at yaw 0.
+    from sim.visualize import load_joint_meshes
+    kin = make_kin()
+    jm = load_joint_meshes()
+    R, p = kin.joint_frames_deg([0, 90, 0, 0])["shoulder"]
+    world = jm["shoulder"].reshape(-1, 3) @ R.T + p
+    size = world.max(0) - world.min(0)
+    assert size[1] < 60 and size[0] > 150 and size[2] > 150
 
 
 if __name__ == "__main__":

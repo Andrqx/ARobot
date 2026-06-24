@@ -46,14 +46,72 @@ def load_link_meshes(geometry_path=None) -> dict:
         mesh = (g or {}).get("mesh")
         if not mesh:
             continue
-        p = Path(mesh)
-        if not p.is_absolute():
-            p = _ROOT / p
-            if not p.exists():                      # allow a bare filename too
-                p = _ROOT / meshes_dir / Path(mesh).name
+        p = _resolve_mesh(mesh, meshes_dir)
         if p.exists():
-            out[name] = load_stl(p)
+            out[name] = _apply_mesh_transform(load_stl(p), g)
     return out
+
+
+def load_joint_meshes(geometry_path=None) -> dict:
+    """Load meshes for the ``joints:`` map in geometry.yaml, by joint name.
+
+    These are components mounted *at a joint* (e.g. the cycloidal drive that
+    sits between two links). With no explicit transform a part is auto-centered
+    on its bounding box, so its centre lands on the pivot and its local +Z (the
+    placement uses :meth:`ArmKinematics.joint_frames`) becomes the joint axis.
+    """
+    import yaml
+
+    gp = Path(geometry_path) if geometry_path else _ROOT / "config" / "geometry.yaml"
+    if not gp.exists():
+        return {}
+    data = yaml.safe_load(gp.read_text()) or {}
+    meshes_dir = data.get("meshes_dir", "meshes")
+    out = {}
+    for name, g in (data.get("joints") or {}).items():
+        mesh = (g or {}).get("mesh")
+        if not mesh:
+            continue
+        p = _resolve_mesh(mesh, meshes_dir)
+        if not p.exists():
+            continue
+        if g.get("mesh_rotation_deg") or g.get("mesh_translation_mm"):
+            out[name] = _apply_mesh_transform(load_stl(p), g)
+        else:
+            flat = load_stl(p).reshape(-1, 3)
+            center = (flat.min(0) + flat.max(0)) / 2.0     # auto-center on pivot
+            out[name] = (flat - center).reshape(-1, 3, 3)
+    return out
+
+
+def _resolve_mesh(mesh, meshes_dir):
+    p = Path(mesh)
+    if not p.is_absolute():
+        p = _ROOT / p
+        if not p.exists():                      # allow a bare filename too
+            p = _ROOT / meshes_dir / Path(mesh).name
+    return p
+
+
+def _apply_mesh_transform(verts, g):
+    """Align a raw CAD mesh into its link's local frame.
+
+    A SolidWorks part rarely comes out with its origin at the joint pivot and
+    its long axis where the kinematics wants it. Two optional per-link keys in
+    geometry.yaml fix that without re-CADding (applied rotate-then-translate):
+
+        mesh_rotation_deg:   [roll, pitch, yaw]   # orient into local frame
+        mesh_translation_mm: [x, y, z]            # move origin onto the pivot
+    """
+    rot = g.get("mesh_rotation_deg")
+    trans = g.get("mesh_translation_mm")
+    if not rot and not trans:
+        return verts
+    from arm_control.perception import _rotation_from_rpy
+    R = _rotation_from_rpy(*np.radians(rot)) if rot else np.eye(3)
+    t = np.asarray(trans, dtype=float) if trans else np.zeros(3)
+    flat = verts.reshape(-1, 3) @ R.T + t
+    return flat.reshape(-1, 3, 3)
 
 
 def _world_triangles(verts, R, p):
@@ -74,6 +132,23 @@ def add_meshes(ax, kin: ArmKinematics, q_deg, link_meshes,
         tris = _world_triangles(verts, R, pos)
         coll = Poly3DCollection(list(tris), facecolor=color,
                                 edgecolor="#5a7ca8", linewidths=0.2, alpha=alpha)
+        ax.add_collection3d(coll)
+        collections[name] = coll
+    return collections
+
+
+def add_joint_meshes(ax, kin: ArmKinematics, q_deg, joint_meshes,
+                     color="#c98a3a", alpha=0.95):
+    """Draw a component (e.g. cyclo drive) at each joint; return collections."""
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    frames = kin.joint_frames_deg(q_deg)
+    collections = {}
+    for name, verts in joint_meshes.items():
+        R, pos = frames[name]
+        tris = _world_triangles(verts, R, pos)
+        coll = Poly3DCollection(list(tris), facecolor=color,
+                                edgecolor="#7a5320", linewidths=0.2, alpha=alpha)
         ax.add_collection3d(coll)
         collections[name] = coll
     return collections
@@ -103,11 +178,13 @@ def _setup_axes(kin: ArmKinematics):
     return fig, ax
 
 
-def plot_pose(kin: ArmKinematics, q_deg, ax=None, link_meshes=None):
+def plot_pose(kin: ArmKinematics, q_deg, ax=None, link_meshes=None,
+              joint_meshes=None):
     """Draw a single static pose.
 
-    If ``link_meshes`` is given (or found in geometry.yaml), the CAD shells are
-    rendered with a faint skeleton overlay; otherwise just the skeleton.
+    If ``link_meshes`` / ``joint_meshes`` are given (or found in geometry.yaml),
+    the CAD shells and joint drives are rendered with a faint skeleton overlay;
+    otherwise just the skeleton.
     """
     import matplotlib.pyplot as plt
 
@@ -116,38 +193,46 @@ def plot_pose(kin: ArmKinematics, q_deg, ax=None, link_meshes=None):
         _, ax = _setup_axes(kin)
     if link_meshes is None:
         link_meshes = load_link_meshes()
+    if joint_meshes is None:
+        joint_meshes = load_joint_meshes()
 
-    skeleton_alpha = 0.35 if link_meshes else 1.0
+    has_mesh = bool(link_meshes or joint_meshes)
+    skeleton_alpha = 0.35 if has_mesh else 1.0
     xs, ys, zs = _segments(kin, q_deg)
     ax.plot(xs, ys, zs, "-o", lw=3, ms=6, color="#2a7de1", alpha=skeleton_alpha)
     ax.plot([xs[-1]], [ys[-1]], [zs[-1]], "o", ms=9, color="#e23a3a")  # tool tip
     if link_meshes:
         add_meshes(ax, kin, q_deg, link_meshes)
+    if joint_meshes:
+        add_joint_meshes(ax, kin, q_deg, joint_meshes)
     if created:
         plt.show()
     return ax
 
 
 def animate_move(kin: ArmKinematics, q_start_deg, q_goal_deg, steps=60, save=None,
-                 link_meshes=None):
+                 link_meshes=None, joint_meshes=None):
     """Animate a smooth move between two joint configurations.
 
-    Renders CAD meshes if available (from ``link_meshes`` or geometry.yaml),
-    otherwise the stick-figure skeleton.
+    Renders CAD link shells + joint drives if available (from the args or
+    geometry.yaml), otherwise the stick-figure skeleton.
     """
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
 
     if link_meshes is None:
         link_meshes = load_link_meshes()
+    if joint_meshes is None:
+        joint_meshes = load_joint_meshes()
 
     path = interpolate(q_start_deg, q_goal_deg, steps=steps, ease=True)
     fig, ax = _setup_axes(kin)
-    skeleton_alpha = 0.35 if link_meshes else 1.0
+    skeleton_alpha = 0.35 if (link_meshes or joint_meshes) else 1.0
     (line,) = ax.plot([], [], [], "-o", lw=3, ms=6, color="#2a7de1",
                       alpha=skeleton_alpha)
     (tip,) = ax.plot([], [], [], "o", ms=9, color="#e23a3a")
     mesh_colls = add_meshes(ax, kin, path[0], link_meshes) if link_meshes else {}
+    joint_colls = add_joint_meshes(ax, kin, path[0], joint_meshes) if joint_meshes else {}
 
     def update(frame):
         qd = path[frame]
@@ -162,6 +247,12 @@ def animate_move(kin: ArmKinematics, q_start_deg, q_goal_deg, steps=60, save=Non
             for name, coll in mesh_colls.items():
                 R, pos = frames[name]
                 coll.set_verts(list(_world_triangles(link_meshes[name], R, pos)))
+                artists.append(coll)
+        if joint_colls:
+            jframes = kin.joint_frames_deg(qd)
+            for name, coll in joint_colls.items():
+                R, pos = jframes[name]
+                coll.set_verts(list(_world_triangles(joint_meshes[name], R, pos)))
                 artists.append(coll)
         return artists
 
